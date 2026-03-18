@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CSR Project Tracker</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f5f3;color:#1a1a1a;padding:1.5rem}
+h1{font-size:20px;font-weight:500;margin-bottom:1.5rem;color:#1a1a1a}
+.tabs{display:flex;gap:8px;margin-bottom:1.5rem;border-bottom:1px solid #e0ddd5;padding-bottom:0}
+.tab{padding:8px 16px;font-size:14px;cursor:pointer;border:none;background:none;color:#666;border-bottom:2px solid transparent;margin-bottom:-1px}
+.tab.active{color:#1a1a1a;border-bottom:2px solid #1a1a1a;font-weight:500}
+.metric-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:1.5rem}
+.metric{background:#eceae3;border-radius:8px;padding:1rem}
+.metric-label{font-size:12px;color:#888;margin-bottom:6px}
+.metric-value{font-size:22px;font-weight:500;color:#1a1a1a}
+.metric-sub{font-size:12px;color:#888;margin-top:4px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;padding:8px 12px;color:#888;font-weight:500;border-bottom:1px solid #e0ddd5;font-size:12px}
+td{padding:10px 12px;border-bottom:1px solid #e0ddd5;color:#1a1a1a;vertical-align:middle}
+tr:last-child td{border-bottom:none}
+.badge{display:inline-block;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:500}
+.badge-green{background:#EAF3DE;color:#3B6D11}
+.badge-amber{background:#FAEEDA;color:#854F0B}
+.badge-red{background:#FCEBEB;color:#A32D2D}
+.badge-blue{background:#E6F1FB;color:#185FA5}
+.badge-gray{background:#F1EFE8;color:#5F5E5A}
+.section-title{font-size:15px;font-weight:500;margin-bottom:1rem;color:#1a1a1a}
+.card{background:#fff;border:1px solid #e0ddd5;border-radius:12px;padding:1.25rem;margin-bottom:1rem}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.5rem}
+.progress-bar{background:#eceae3;border-radius:4px;height:6px;overflow:hidden;margin-top:6px}
+.progress-fill{height:100%;border-radius:4px}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+input,select,textarea{width:100%;padding:8px 10px;border:1px solid #ccc;border-radius:8px;font-size:13px;background:#fff;color:#1a1a1a}
+label{font-size:12px;color:#888;display:block;margin-bottom:4px}
+.btn-primary{background:#1a1a1a;color:#fff;border:none;padding:8px 20px;border-radius:8px;font-size:13px;cursor:pointer}
+.btn-secondary{background:none;border:1px solid #ccc;color:#1a1a1a;padding:8px 16px;border-radius:8px;font-size:13px;cursor:pointer}
+.deadline-item{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid #e0ddd5}
+.deadline-item:last-child{border-bottom:none}
+.deadline-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.impact-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.actions{display:flex;gap:8px;margin-bottom:1.5rem;align-items:center}
+.search-box{flex:1;padding:8px 12px;border:1px solid #ccc;border-radius:8px;font-size:13px;background:#fff;color:#1a1a1a}
+</style>
+</head>
+<body>
+<h1>CSR Project Tracker</h1>
+
+<div class="tabs">
+  <button class="tab active" onclick="showTab('overview')">Overview</button>
+  <button class="tab" onclick="showTab('projects')">Projects</button>
+  <button class="tab" onclick="showTab('compliance')">Compliance</button>
+  <button class="tab" onclick="showTab('add')">+ Add Project</button>
+</div>
+
+<div id="tab-overview">
+  <div class="metric-grid">
+    <div class="metric"><div class="metric-label">Total Projects</div><div class="metric-value" id="m-total">0</div><div class="metric-sub">Across all companies</div></div>
+    <div class="metric"><div class="metric-label">Total CSR Budget</div><div class="metric-value" id="m-budget">₹0</div><div class="metric-sub">FY 2024–25</div></div>
+    <div class="metric"><div class="metric-label">Spent So Far</div><div class="metric-value" id="m-spent">₹0</div><div class="metric-sub" id="m-spent-pct">0% utilised</div></div>
+    <div class="metric"><div class="metric-label">Beneficiaries</div><div class="metric-value" id="m-benef">0</div><div class="metric-sub">People impacted</div></div>
+  </div>
+  <div class="two-col">
+    <div class="card"><div class="section-title">Budget utilisation by company</div><div id="budget-chart"></div></div>
+    <div class="card"><div class="section-title">Projects by theme</div><div id="theme-chart"></div></div>
+  </div>
+  <div class="card"><div class="section-title">Upcoming deadlines</div><div id="deadlines-list"></div></div>
+</div>
+
+<div id="tab-projects" style="display:none">
+  <div class="actions">
+    <input class="search-box" placeholder="Search projects, companies, themes..." oninput="filterProjects(this.value)" id="search-box">
+    <select style="width:160px" onchange="filterStatus(this.value)">
+      <option value="">All statuses</option>
+      <option>Active</option><option>Completed</option><option>Planned</option><option>Delayed</option>
+    </select>
+  </div>
+  <div class="card" style="padding:0;overflow:hidden">
+    <table>
+      <thead><tr>
+        <th>Company</th><th>Project</th><th>Theme</th><th>Budget (₹ Cr)</th><th>Spent (₹ Cr)</th><th>Beneficiaries</th><th>Status</th><th>Deadline</th>
+      </tr></thead>
+      <tbody id="project-table"></tbody>
+    </table>
+  </div>
+</div>
+
+<div id="tab-compliance" style="display:none">
+  <div class="metric-grid" style="grid-template-columns:repeat(3,1fr)">
+    <div class="metric"><div class="metric-label">Section 135 Compliant</div><div class="metric-value" id="c-compliant" style="color:#3B6D11">0</div><div class="metric-sub">Companies on track</div></div>
+    <div class="metric"><div class="metric-label">2% Net Profit Mandate</div><div class="metric-value" id="c-mandate">₹0 Cr</div><div class="metric-sub">Required total spend</div></div>
+    <div class="metric"><div class="metric-label">Reporting Due</div><div class="metric-value" id="c-due" style="color:#854F0B">0</div><div class="metric-sub">In next 30 days</div></div>
+  </div>
+  <div class="card">
+    <div class="section-title">Compliance status by company</div>
+    <table>
+      <thead><tr><th>Company</th><th>Net Profit (₹ Cr)</th><th>2% Mandate (₹ Cr)</th><th>Actual Spend (₹ Cr)</th><th>Surplus/Deficit</th><th>MCA Filing</th><th>Status</th></tr></thead>
+      <tbody id="compliance-table"></tbody>
+    </table>
+  </div>
+</div>
+
+<div id="tab-add" style="display:none">
+  <div class="card">
+    <div class="section-title" style="margin-bottom:1.25rem">Add new CSR project</div>
+    <div class="form-row">
+      <div><label>Company name</label><input id="f-company" placeholder="e.g. Tata Steel Ltd"></div>
+      <div><label>Project name</label><input id="f-project" placeholder="e.g. Digital Literacy Drive"></div>
+    </div>
+    <div class="form-row">
+      <div><label>Theme / Focus area</label><select id="f-theme"><option>Education</option><option>Healthcare</option><option>Environment</option><option>Rural Development</option><option>Women Empowerment</option><option>Skill Development</option><option>Sanitation</option><option>Other</option></select></div>
+      <div><label>Status</label><select id="f-status"><option>Planned</option><option>Active</option><option>Completed</option><option>Delayed</option></select></div>
+    </div>
+    <div class="form-row">
+      <div><label>Budget allocated (₹ Cr)</label><input id="f-budget" type="number" placeholder="0.00" step="0.01"></div>
+      <div><label>Amount spent (₹ Cr)</label><input id="f-spent" type="number" placeholder="0.00" step="0.01"></div>
+    </div>
+    <div class="form-row">
+      <div><label>Beneficiaries (count)</label><input id="f-benef" type="number" placeholder="0"></div>
+      <div><label>MCA filing deadline</label><input id="f-deadline" type="date"></div>
+    </div>
+    <div class="form-row">
+      <div><label>Net profit of company (₹ Cr)</label><input id="f-netprofit" type="number" placeholder="For 2% mandate calc" step="0.01"></div>
+      <div><label>Location / State</label><input id="f-location" placeholder="e.g. Jharkhand"></div>
+    </div>
+    <div style="margin-bottom:1rem"><label>Description / Notes</label><textarea id="f-notes" rows="2" placeholder="Brief description of the project and its goals..."></textarea></div>
+    <div style="display:flex;gap:10px">
+      <button class="btn-primary" onclick="addProject()">Save project</button>
+      <button class="btn-secondary" onclick="clearForm()">Clear</button>
+    </div>
+    <div id="form-msg" style="margin-top:10px;font-size:13px"></div>
+  </div>
+</div>
+
+<script>
+let projects=[
+  {company:"Reliance Industries",project:"Vantage Nutrition",theme:"Healthcare",budget:120,spent:98,benef:250000,status:"Active",deadline:"2025-03-31",netprofit:6000,location:"Gujarat",notes:""},
+  {company:"Tata Steel",project:"Samvaad Digital Literacy",theme:"Education",budget:45,spent:45,benef:80000,status:"Completed",deadline:"2024-12-31",netprofit:2200,location:"Jharkhand",notes:""},
+  {company:"Infosys",project:"Aarohan Rural Dev",theme:"Rural Development",budget:80,spent:52,benef:120000,status:"Active",deadline:"2025-03-31",netprofit:4000,location:"Karnataka",notes:""},
+  {company:"HDFC Bank",project:"Parivartan Skilling",theme:"Skill Development",budget:60,spent:30,benef:55000,status:"Planned",deadline:"2025-06-30",netprofit:3000,location:"Maharashtra",notes:""},
+  {company:"ITC Limited",project:"e-Choupal 3.0",theme:"Rural Development",budget:95,spent:70,benef:310000,status:"Active",deadline:"2025-03-31",netprofit:4800,location:"Uttar Pradesh",notes:""},
+];
+let statusFilter="";
+function fmt(n){return n>=100?Math.round(n).toLocaleString('en-IN'):parseFloat(n.toFixed(1));}
+function fmtCr(n){return "₹"+fmt(n)+" Cr";}
+function statusBadge(s){const m={Active:"badge-green",Completed:"badge-blue",Planned:"badge-gray",Delayed:"badge-red"};return `<span class="badge ${m[s]||'badge-gray'}">${s}</span>`;}
+function renderMetrics(){
+  const bud=projects.reduce((a,p)=>a+p.budget,0),sp=projects.reduce((a,p)=>a+p.spent,0),bn=projects.reduce((a,p)=>a+p.benef,0);
+  document.getElementById('m-total').textContent=projects.length;
+  document.getElementById('m-budget').textContent=fmtCr(bud);
+  document.getElementById('m-spent').textContent=fmtCr(sp);
+  document.getElementById('m-spent-pct').textContent=Math.round(sp/bud*100)+"% utilised";
+  document.getElementById('m-benef').textContent=bn.toLocaleString('en-IN');
+}
+function renderBudgetChart(){
+  const el=document.getElementById('budget-chart'),comps={};
+  projects.forEach(p=>{if(!comps[p.company])comps[p.company]={budget:0,spent:0};comps[p.company].budget+=p.budget;comps[p.company].spent+=p.spent;});
+  el.innerHTML=Object.entries(comps).map(([co,v])=>{
+    const pct=Math.round(v.spent/v.budget*100),col=pct>=90?"#1D9E75":pct>=60?"#BA7517":"#D85A30";
+    const short=co.replace(" Industries","").replace(" Bank","").replace(" Limited","");
+    return `<div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;font-size:12px;color:#888;margin-bottom:4px"><span>${short}</span><span>${pct}% of ₹${fmt(v.budget)} Cr</span></div><div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${col}"></div></div></div>`;
+  }).join('');
+}
+function renderThemeChart(){
+  const el=document.getElementById('theme-chart'),themes={};
+  projects.forEach(p=>{themes[p.theme]=(themes[p.theme]||0)+1;});
+  const colors=["#1D9E75","#378ADD","#BA7517","#D85A30","#7F77DD","#D4537E","#639922"];
+  const entries=Object.entries(themes).sort((a,b)=>b[1]-a[1]),max=entries[0][1];
+  el.innerHTML=entries.map(([t,n],i)=>`<div class="impact-row"><span style="font-size:13px">${t}</span><div style="flex:1;margin:0 12px"><div class="progress-bar"><div class="progress-fill" style="width:${Math.round(n/max*100)}%;background:${colors[i%colors.length]}"></div></div></div><span style="font-size:12px;color:#888;min-width:16px;text-align:right">${n}</span></div>`).join('');
+}
+function renderDeadlines(){
+  const el=document.getElementById('deadlines-list'),now=new Date();
+  const sorted=projects.filter(p=>p.status!=='Completed').sort((a,b)=>new Date(a.deadline)-new Date(b.deadline));
+  if(!sorted.length){el.innerHTML='<div style="color:#888;font-size:13px">No upcoming deadlines</div>';return;}
+  el.innerHTML=sorted.map(p=>{
+    const d=new Date(p.deadline),diff=Math.ceil((d-now)/(1000*60*60*24));
+    const col=diff<30?"#E24B4A":diff<90?"#BA7517":"#1D9E75",label=diff<0?"Overdue":diff===0?"Today":diff+" days";
+    return `<div class="deadline-item"><div class="deadline-dot" style="background:${col}"></div><div style="flex:1"><div style="font-size:13px;font-weight:500">${p.project}</div><div style="font-size:12px;color:#888">${p.company} · MCA filing</div></div><div style="text-align:right"><div style="font-size:12px;font-weight:500;color:${col}">${label}</div><div style="font-size:11px;color:#888">${p.deadline}</div></div></div>`;
+  }).join('');
+}
+function renderProjects(){
+  const tbody=document.getElementById('project-table');
+  const s=(document.getElementById('search-box')||{}).value||'';
+  const list=projects.filter(p=>{
+    const matchSearch=!s||(p.company+p.project+p.theme+p.location).toLowerCase().includes(s.toLowerCase());
+    return matchSearch&&(!statusFilter||p.status===statusFilter);
+  });
+  if(!list.length){tbody.innerHTML='<tr><td colspan="8" style="text-align:center;color:#888;padding:2rem">No projects found</td></tr>';return;}
+  tbody.innerHTML=list.map(p=>`<tr><td style="font-weight:500">${p.company}</td><td>${p.project}</td><td><span class="badge badge-blue">${p.theme}</span></td><td>${fmt(p.budget)}</td><td>${fmt(p.spent)} <span style="color:#888;font-size:11px">(${Math.round(p.spent/p.budget*100)}%)</span></td><td>${p.benef.toLocaleString('en-IN')}</td><td>${statusBadge(p.status)}</td><td style="font-size:12px;color:#888">${p.deadline}</td></tr>`).join('');
+}
+function renderCompliance(){
+  const tbody=document.getElementById('compliance-table'),comps={};
+  projects.forEach(p=>{if(!comps[p.company])comps[p.company]={netprofit:p.netprofit||0,spent:0,deadline:p.deadline};comps[p.company].spent+=p.spent;if(p.netprofit)comps[p.company].netprofit=Math.max(comps[p.company].netprofit,p.netprofit);});
+  const entries=Object.entries(comps);
+  const compliant=entries.filter(([,v])=>v.spent>=v.netprofit*0.02).length;
+  const totalMandate=entries.reduce((a,[,v])=>a+v.netprofit*0.02,0);
+  const now=new Date(),due=projects.filter(p=>{const diff=Math.ceil((new Date(p.deadline)-now)/(1000*60*60*24));return diff>=0&&diff<=30&&p.status!=='Completed';}).length;
+  document.getElementById('c-compliant').textContent=compliant;
+  document.getElementById('c-mandate').textContent=fmtCr(totalMandate);
+  document.getElementById('c-due').textContent=due;
+  tbody.innerHTML=entries.map(([co,v])=>{
+    const mandate=parseFloat((v.netprofit*0.02).toFixed(2)),surplus=parseFloat((v.spent-mandate).toFixed(2)),ok=surplus>=0;
+    return `<tr><td style="font-weight:500">${co}</td><td>${fmt(v.netprofit)}</td><td>${fmt(mandate)}</td><td>${fmt(v.spent)}</td><td style="color:${ok?'#3B6D11':'#A32D2D'};font-weight:500">${ok?'+':''}${fmt(surplus)} Cr</td><td style="font-size:12px;color:#888">${v.deadline}</td><td>${ok?statusBadge('Completed'):statusBadge('Delayed')}</td></tr>`;
+  }).join('');
+}
+function showTab(t){
+  ['overview','projects','compliance','add'].forEach(id=>{document.getElementById('tab-'+id).style.display=id===t?'block':'none';});
+  document.querySelectorAll('.tab').forEach((el,i)=>{el.classList.toggle('active',['overview','projects','compliance','add'][i]===t);});
+  if(t==='projects')renderProjects();
+  if(t==='compliance')renderCompliance();
+}
+function filterProjects(){renderProjects();}
+function filterStatus(v){statusFilter=v;renderProjects();}
+function addProject(){
+  const co=document.getElementById('f-company').value.trim(),pr=document.getElementById('f-project').value.trim();
+  if(!co||!pr){document.getElementById('form-msg').innerHTML='<span style="color:#A32D2D">Please enter at least company and project name.</span>';return;}
+  projects.push({company:co,project:pr,theme:document.getElementById('f-theme').value,status:document.getElementById('f-status').value,budget:parseFloat(document.getElementById('f-budget').value)||0,spent:parseFloat(document.getElementById('f-spent').value)||0,benef:parseInt(document.getElementById('f-benef').value)||0,deadline:document.getElementById('f-deadline').value||'—',netprofit:parseFloat(document.getElementById('f-netprofit').value)||0,location:document.getElementById('f-location').value,notes:document.getElementById('f-notes').value});
+  renderMetrics();renderBudgetChart();renderThemeChart();renderDeadlines();
+  document.getElementById('form-msg').innerHTML='<span style="color:#3B6D11">Project saved successfully!</span>';
+  clearForm();
+}
+function clearForm(){['f-company','f-project','f-budget','f-spent','f-benef','f-deadline','f-netprofit','f-location','f-notes'].forEach(id=>{document.getElementById(id).value='';});}
+renderMetrics();renderBudgetChart();renderThemeChart();renderDeadlines();
+</script>
+</body>
+</html>
